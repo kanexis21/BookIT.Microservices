@@ -1,8 +1,11 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
 using SapportService.Hubs;
 using SupportService.Api.Infrastructure;
 using SupportService.Application;
 using SupportService.Core.Application.Common.Mapping;
+using SupportService.Core.Application.Common.Services;
 using SupportService.Core.Application.Interfaces;
 using System.Reflection;
 
@@ -13,13 +16,33 @@ builder.Services.AddAutoMapper(config =>
     config.AddProfile(new AssemblyMappingProfile(Assembly.GetExecutingAssembly()));
     config.AddProfile(new AssemblyMappingProfile(typeof(IMessageDbContext).Assembly));
 });
-builder.Services.AddAuthentication("Bearer")
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
     .AddJwtBearer("Bearer", options =>
     {
         options.Authority = "https://localhost:5005";
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateAudience = false
+        };
+        // Чтобы SignalR мог читать токен из query string:
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                // Если это подключение к хабу - подставляем токен
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/supporthub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -51,7 +74,9 @@ builder.Services.AddCors(options =>
     );
 });
 
+builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 builder.Services.AddSignalR();
+
 
 var app = builder.Build();
 
@@ -63,7 +88,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapHub<ChatHub>("/supporthub").AllowAnonymous();
+app.MapHub<SupportHub>("/supporthub").AllowAnonymous();
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

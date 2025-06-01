@@ -1,4 +1,7 @@
-﻿namespace SupportService.Core.Application.Services.Clients
+﻿using System.Net.Http;
+using System.Text.Json;
+
+namespace SupportService.Core.Application.Services.Clients
 {
     public class UserClient : IUserClient
     {
@@ -11,13 +14,30 @@
 
         public async Task<string> GetUserNameAsync(Guid userId)
         {
-            var response = await _httpClient.GetAsync($"identity/api/users/{userId}");
+            var response = await _httpClient.GetAsync($"api/user/profile/{userId}");
             if (!response.IsSuccessStatusCode)
                 return "Неизвестный";
 
             var content = await response.Content.ReadAsStringAsync();
-            return content.Trim('"');
+
+            try
+            {
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("firstName", out var firstName))
+                {
+                    return firstName.GetString();
+                }
+
+                return "Неизвестный";
+            }
+            catch
+            {
+                return "Неизвестный";
+            }
         }
+
     }
 
 }

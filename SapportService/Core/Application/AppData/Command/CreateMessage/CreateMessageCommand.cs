@@ -8,6 +8,7 @@ namespace SupportService.Core.Application.AppData.Command.CreateMessage
         public Guid SenderId { get; set; }
         public Guid ReceiverId { get; set; }
         public string Text { get; set; } = string.Empty;
+        public string SenderName {  get; set; }
     }
 
 

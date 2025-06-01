@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.SignalR;
 using SupportService.Core.Application.Common;
 using SupportService.Core.Application.Common.Services;
 using SupportService.Core.Application.Services.Clients;
@@ -12,15 +13,13 @@ namespace SupportService.Application
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {
             services.AddHttpContextAccessor();
+
             services.AddTransient<AccessTokenHandler>();
 
             services.AddHttpClient<IUserClient, UserClient>("IdentityServer", client =>
             {
                 client.BaseAddress = new Uri("https://localhost:5005");
             }).AddHttpMessageHandler<AccessTokenHandler>();
-
-            services.AddSingleton<IUserClient,UserClient>();
-
 
             services.AddHttpClient("ApiGateway", client =>
             {
